@@ -1,154 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Text.RegularExpressions;
+﻿using System.IO;
 using System.Threading.Tasks;
-using BdoCodexSraping.Core;
-using HtmlAgilityPack;
 using Newtonsoft.Json;
-using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Support.UI;
-using static System.IO.Directory;
-using Cookie = System.Net.Cookie;
+using Scraper.Scrapers;
 
 namespace Scraper
 {
     internal class Program
     {
-        private static async Task Main()
+        private static void Main()
         {
             string chromeDriverLocation = "C:/Users/ALANC/Desktop/";
-            string codexRecipePage = "https://bdocodex.com/us/recipes/alchemy/";
-            List<string> recipeLinks = new List<string>();
-            var recipes = new List<BdoRecipeModel>();
+            CodexRecipeScraper scraper = new CodexRecipeScraper(chromeDriverLocation);
 
-            using (var driver = new ChromeDriver(chromeDriverLocation))
-            {
-                driver.Manage().Timeouts().ImplicitWait = new TimeSpan(20000);
-                driver.Navigate().GoToUrl(codexRecipePage);
+            var recipes = scraper.GetCookingRecipes();
 
-                var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
-                wait.Until(ExpectedConditions.ElementExists(By.Id("CulinaryRecipesTable_next")));
-
-                while (driver.FindElementById("CulinaryRecipesTable_next").GetAttribute("class") != "paginate_button next disabled")
-                {
-                    var recipeRows = driver.FindElementByXPath("//*[@id='CulinaryRecipesTable']/tbody").FindElements(By.TagName("tr"));
-
-                    foreach(var row in recipeRows)
-                    {
-                        
-                        var newRecipe = new BdoRecipeModel();
-
-                        //Recipe ID
-                        string recipeIdString = row.FindElement(By.XPath(".//td[@class=' dt-id']")).Text;
-                        if(recipeIdString == null)
-                        {
-                            continue;
-                        }
-                        Int32.TryParse(recipeIdString, out int recipeID);
-                        newRecipe.Id = recipeID;
-
-                        //Recipe Img
-                        var recipeImgData = row.FindElement(By.XPath(".//td[@class=' dt-icon']"));
-                        string recipeImgString = recipeImgData.FindElement(By.TagName("img")).GetAttribute("src");
-                        newRecipe.Img = recipeImgString;
-
-                        //Recipe Name and Grade
-                        var recipeTitleData = row.FindElement(By.XPath(".//td[@class='dt-title sorting_1']"));
-                        var recipeNameLink = recipeTitleData.FindElement(By.TagName("a"));
-                        string recipeName = recipeNameLink.FindElement(By.TagName("b")).Text;
-                        newRecipe.Name = recipeName;
-
-                        string recipeGradeClass = recipeNameLink.GetAttribute("class");
-                        Int32.TryParse(Regex.Match(recipeGradeClass, @"\d+").Value, out int recipeGrade);
-                        newRecipe.Grade = (ItemGrade)recipeGrade;
-
-                        //Recipe Type, Skill Level, and EXP
-                        var recipeInfoData = row.FindElements(By.XPath(".//td[@class=' dt-level']"));
-
-                        string recipeTypeString = recipeInfoData[0].Text;
-                        Enum.TryParse(recipeTypeString, out RecipeType recipeType);
-                        newRecipe.Type = recipeType;
-
-                        string recipeSkillLevel = recipeInfoData[1].Text;
-                        newRecipe.SkillLevel = recipeSkillLevel;
-
-                        if (!string.IsNullOrEmpty(recipeInfoData[2].Text))
-                        {
-                            Int32.TryParse(recipeInfoData[2].Text.Replace("'",""), out int recipeExp);
-                            newRecipe.Exp = recipeExp;
-                        }
-
-                        /**Recipe Materials And Crafting Results **/
-                        var materialAndResultData = row.FindElements(By.XPath(".//td[@class=' dt-reward']"));
-
-                        //Materials and Amounts
-                        var materialsData = materialAndResultData[0]
-                                            .FindElements(By.XPath(".//div[@class='iconset_wrapper_medium inlinediv']"));
-                        foreach(var materialData in materialsData)
-                        {
-                            var materialCategoryId = materialData.FindElement(By.TagName("a")).GetAttribute("data-id");
-                            int materialAmount = 1;
-                            var materialAmoundData = materialData.FindElements(By.XPath(".//div[@class='quantity_small nowrap']"));
-                            var materialAmountString = string.Empty;
-                            if(materialAmoundData.Count > 0){
-                                materialAmountString = materialAmoundData[0].Text;
-                            }
-                            Int32.TryParse(materialAmountString, out materialAmount);
-
-                            if(materialCategoryId != null)
-                            {
-                                if (newRecipe.ItemMaterials == null)
-                                    newRecipe.ItemMaterials = new Dictionary<string, int>();
-
-                                newRecipe.ItemMaterials.Add(materialCategoryId, materialAmount);
-                            }
-                        }
-
-                        //Crafting Results
-                        var resultsData = materialAndResultData[1]
-                                          .FindElements(By.XPath(".//div[@class='iconset_wrapper_medium inlinediv']"));
-                        foreach(var resultData in resultsData)
-                        {
-                            if (newRecipe.CraftingResults == null)
-                                newRecipe.CraftingResults = new List<string>();
-
-                            string dataId = resultData.FindElement(By.TagName("a")).GetAttribute("data-id");
-                            if(dataId != null)
-                            {
-                                newRecipe.CraftingResults.Add(dataId);
-                            }
-                        }
-                            
-
-                        recipes.Add(newRecipe);
-                    }
-
-                    //var recipeCards = driver.FindElementsByXPath("//td[@class='dt-title sorting_1']");
-                    //foreach (var elem in recipeCards)
-                    //{
-                    //    var linkElem = elem.FindElement(By.TagName("a"));
-                    //    var link = linkElem.GetAttribute("href");
-                    //    Console.WriteLine(link);
-                    //    recipeLinks.Add(link);
-                    //}
-
-                    var nextbtnSurroundElem = driver.FindElementById("CulinaryRecipesTable_next");
-                    var nextLink = nextbtnSurroundElem.FindElement(By.TagName("a"));
-                    nextLink.Click();
-                }
-                driver.Close();
-            }
-
-
-            var htmlDocument = new HtmlDocument();
             
-            string file = "AlchemyRecipes.json";
-            
+            string file = "CookingRecipes.json";
+            string json = JsonConvert.SerializeObject(recipes);
+            File.WriteAllText(file, json);
 
             //foreach (var recipeLink in recipeLinks)
             //{
@@ -160,7 +29,7 @@ namespace Scraper
             //    httpWebRequest.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36";
             //    httpWebRequest.Method = "GET";
             //    httpWebRequest.AllowAutoRedirect = true;
-                
+
             //    var response = await httpWebRequest.GetResponseAsync();
 
             //    var outputString = string.Empty;
@@ -171,7 +40,7 @@ namespace Scraper
             //            outputString = reader.ReadToEnd();
             //        }
             //    }
-                
+
             //    htmlDocument.LoadHtml(outputString);
 
             //    var recipe = new BdoRecipeModel();
@@ -234,8 +103,7 @@ namespace Scraper
             //}
 
 
-            string json = JsonConvert.SerializeObject(recipes);
-            File.WriteAllText(file, json);
+
 
         }
         

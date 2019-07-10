@@ -13,7 +13,7 @@ namespace BdoCodexSraping.Core
         public RecipeType Type { get; set; }
         public string SkillLevel { get; set; }
         public int Exp { get; set; }
-        public Dictionary<string,int> ItemMaterials { get; set; }
+        public List<KeyValuePair<string,int>> ItemMaterials { get; set; }
         public List<string> CraftingResults { get; set; }
     }
 }
