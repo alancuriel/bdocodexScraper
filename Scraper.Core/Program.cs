@@ -24,7 +24,7 @@ namespace Scraper
             {
                 if(args[0].ToLower() == "recipe")
                 {
-                    if(args.Length > 1 && string.IsNullOrEmpty(args[1]))
+                    if(args.Length > 1 && !string.IsNullOrEmpty(args[1]))
                     {
                         if(args[1].ToLower() == "-cooking")
                         {
@@ -56,7 +56,7 @@ namespace Scraper
                 }
                 else if(args[0].ToLower() == "item")
                 {
-                    if (args.Length > 1 && string.IsNullOrEmpty(args[1]))
+                    if (args.Length > 1 && !string.IsNullOrEmpty(args[1]))
                     {
                         if(args[1] == "-material")
                         {
