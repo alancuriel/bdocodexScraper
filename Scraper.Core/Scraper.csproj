@@ -18,6 +18,12 @@
     <ProjectReference Include="..\BdoCodexSraping.Core\BdoCodexSraping.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="chromedriver.exe">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 
 
 </Project>

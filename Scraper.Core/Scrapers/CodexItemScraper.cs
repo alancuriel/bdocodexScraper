@@ -32,6 +32,7 @@ namespace Scraper.Scrapers
 
             foreach (var materialLink in materialLinks)
             {
+                Console.WriteLine($"Scraping from {materialLink}");
                 var cookie = new CookieContainer();
                 HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(materialLink);
                 httpWebRequest.CookieContainer = cookie;
@@ -52,7 +53,7 @@ namespace Scraper.Scrapers
                     }
                 }
 
-                Console.WriteLine(outputString);
+                
                 htmlDocument.LoadHtml(outputString);
 
                 var item = new BdoItemModel();
@@ -97,9 +98,24 @@ namespace Scraper.Scrapers
                     .FirstOrDefault().GetAttributeValue("src", string.Empty);
                 item.Img = $"https://{response.ResponseUri.Host}{itemImg}";
 
-                
+                //Item Category
+                var itemCategory = itemBox.Descendants("span")
+                                   .Where(n => n.GetAttributeValue("class", string.Empty) == "category_text")
+                                   .FirstOrDefault();
+                if(itemCategory != null)
+                {
+                    item.Category = itemCategory.InnerText;
+                }
+
+                //Item Description
+                var itemDescriptionElem = itemBox.Descendants("td").Where(n => n.InnerText.Contains("Description")).FirstOrDefault();
+                if(itemDescriptionElem != null)
+                {
+                    item.Description = itemDescriptionElem.InnerText;//Replace with innerHtml for colored text markups
+                }
 
                 materials.Add(item);
+                Console.WriteLine($"Finished Scraping {materialLink}");
             }
 
 
@@ -118,25 +134,25 @@ namespace Scraper.Scrapers
                 var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
                 wait.Until(ExpectedConditions.ElementExists(By.Id($"{htmlTableName}_next")));
 
-                //while (driver.FindElementById($"{htmlTableName}_next").GetAttribute("class")
-                //    != "paginate_button next disabled")
-                //{
+                while (driver.FindElementById($"{htmlTableName}_next").GetAttribute("class")
+                    != "paginate_button next disabled")
+                {
                     var titleElements = driver.FindElementsByClassName("dt-title-search").Where(e => e.TagName == "td");
 
                     foreach (var titleElement in titleElements)
                     {
                         var linkElement = titleElement.FindElement(By.TagName("a"));
                         string itemUrl = linkElement.GetAttribute("href");
-                        
+                        Console.WriteLine($"Got {itemUrl}");
                         links.Add(itemUrl);
                     }
 
-                //    var nextbtnSurroundElem = driver.FindElementById($"{htmlTableName}_next");
-                //    var nextLink = nextbtnSurroundElem.FindElement(By.TagName("a"));
-                //    nextLink.Click();
-                //}
+                    var nextbtnSurroundElem = driver.FindElementById($"{htmlTableName}_next");
+                    var nextLink = nextbtnSurroundElem.FindElement(By.TagName("a"));
+                    nextLink.Click();
+                }
 
-                    driver.Close();
+                driver.Close();
             }
 
             return links;
