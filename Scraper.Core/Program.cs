@@ -64,6 +64,12 @@ namespace Scraper
                             items = itemScraper.GetMaterialItems();
                             file = "MaterialItems.json";
                         }
+                        else if(args[1] == "-crystal")
+                        {
+                            itemScraper = new CodexItemScraper(chromeDriverLocation);
+                            items = itemScraper.GetMaterialItems();
+                            file = "SocketItems.json";
+                        }
                         else
                         {
                             Console.WriteLine("Please enter a valid parameter eg: -material");
