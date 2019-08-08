@@ -10,7 +10,7 @@ namespace Scraper
 {
     internal class Program
     {
-        private static void Main(string[] args)
+        private static async Task Main(string[] args)
         {
             string chromeDriverLocation = Directory.GetCurrentDirectory();
             CodexItemScraper itemScraper = null;
@@ -61,8 +61,14 @@ namespace Scraper
                         if(args[1] == "-material")
                         {
                             itemScraper = new CodexItemScraper(chromeDriverLocation);
-                            items = itemScraper.GetMaterialItems();
+                            items = await itemScraper.GetMaterialItemsAsync();
                             file = "MaterialItems.json";
+                        }
+                        else if(args[1] == "-crystal")
+                        {
+                            itemScraper = new CodexItemScraper(chromeDriverLocation);
+                            items = await itemScraper.GetCrystalItemsAsync();
+                            file = "SocketItems.json";
                         }
                         else
                         {

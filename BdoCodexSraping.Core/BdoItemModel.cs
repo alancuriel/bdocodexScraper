@@ -9,5 +9,8 @@
         public ItemGrade Grade { get; set; }
         public string Weight { get; set; }
         public string Description { get; set; }
+        public string Knowledge { get; set; }
+        public string SellPrice { get; set; }
+        public string BuyPrice { get; set; }
     }
 }
