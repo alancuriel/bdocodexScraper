@@ -10,6 +10,7 @@ using System.Net;
 using System.IO;
 using HtmlAgilityPack;
 using System.Text.RegularExpressions;
+using System.Net.Cache;
 
 namespace Scraper.Scrapers
 {
@@ -28,16 +29,16 @@ namespace Scraper.Scrapers
             Driver = new ChromeDriver(chromeDriver);
         }
 
-        public List<BdoItemModel> GetMaterialItems()
+        public async System.Threading.Tasks.Task<List<BdoItemModel>> GetMaterialItemsAsync()
         {
             var materialLinks = GetItemLinks(MaterialItemsUrl, MaterialTableHtml, MaterialLinkElementId);
-            return ScrapeItemLinks(materialLinks);    
+            return await ScrapeItemLinksAsync(materialLinks);    
         }
 
-        internal List<BdoItemModel> GetCrystalItems()
+        internal async System.Threading.Tasks.Task<List<BdoItemModel>> GetCrystalItemsAsync()
         {
             var materialLinks = GetItemLinks(GemItemsUrl, GemTableHtml,GemLinkElementId);
-            return ScrapeItemLinks(materialLinks);
+            return await ScrapeItemLinksAsync(materialLinks);
         }
 
         private List<string> GetItemLinks(string url, string htmlTableName, string linkElementId)
@@ -76,7 +77,7 @@ namespace Scraper.Scrapers
             return links;
         }
 
-        private List<BdoItemModel> ScrapeItemLinks(List<string> links)
+        private async System.Threading.Tasks.Task<List<BdoItemModel>> ScrapeItemLinksAsync(List<string> links)
         {
             var materials = new List<BdoItemModel>();
             var htmlDocument = new HtmlDocument();
@@ -93,7 +94,7 @@ namespace Scraper.Scrapers
                 httpWebRequest.Method = "GET";
                 httpWebRequest.AllowAutoRedirect = true;
 
-                var response = httpWebRequest.GetResponse();
+                var response = await httpWebRequest.GetResponseAsync();
 
                 var outputString = string.Empty;
                 using (Stream stream = response.GetResponseStream())
@@ -163,6 +164,28 @@ namespace Scraper.Scrapers
                 if (itemDescriptionElem != null)
                 {
                     item.Description = itemDescriptionElem.InnerText;//Replace with innerHtml for colored text markups
+                    if(item.Description.Contains("Knowledge:"))
+                    {
+                        var knowledgeNode = itemDescriptionElem.Descendants("a")
+                            .FirstOrDefault(e => e.GetAttributeValue("data-id","").StartsWith("theme--"));
+
+                        if(knowledgeNode != null)
+                        {
+                            item.Knowledge = knowledgeNode.GetAttributeValue("data-id", "");
+                        }
+                    }
+                    var sellOrMarket = "Sell price: ";
+                    if (!item.Description.Contains(sellOrMarket))
+                        sellOrMarket = "Market Price: ";
+
+                    var sellBuyPrice = item.Description.Substring(item.Description.IndexOf("Buy price:"));
+
+                    var buyPrice = sellBuyPrice.Substring(0, sellBuyPrice.IndexOf(sellOrMarket));
+                    item.BuyPrice = buyPrice.Replace("Buy price: ","");
+
+                    var sellprice = sellBuyPrice.Substring(sellBuyPrice.IndexOf(sellOrMarket));
+                    item.SellPrice = sellprice.Replace(sellOrMarket, "");
+
                 }
 
                 materials.Add(item);
