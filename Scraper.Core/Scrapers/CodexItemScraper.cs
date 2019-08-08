@@ -11,6 +11,7 @@ using System.IO;
 using HtmlAgilityPack;
 using System.Text.RegularExpressions;
 using System.Net.Cache;
+using System.Threading.Tasks;
 
 namespace Scraper.Scrapers
 {
@@ -18,8 +19,12 @@ namespace Scraper.Scrapers
     {
         public static string MaterialItemsUrl { get; set; } = "https://bdocodex.com/us/items/materials/";
         public static string GemItemsUrl { get; set; } = "https://bdocodex.com/us/items/gems/";
+        public static string AlchemyStonesUrl { get; set; } = "https://bdocodex.com/us/items/stones/";
+        public static string EnchancementItemsUrl { get; set; } = "https://bdocodex.com/us/items/powerup/";
+        public static string ConsumableItemsUrl { get; set; } = "https://bdocodex.com/us/items/consumables/";
         public static string MaterialTableHtml { get; set; } = "MainItemTable";
         public static string GemTableHtml { get; set; } = "GemsTable";
+        public static string ConsumableTableHtml { get; set; } = "ConsumablesTable";
         public static string MaterialLinkElementId { get; set; } = "dt-title-search";
         public static string GemLinkElementId { get; set; } = "sorting_1";
         public ChromeDriver Driver { get; set; }
@@ -29,23 +34,41 @@ namespace Scraper.Scrapers
             Driver = new ChromeDriver(chromeDriver);
         }
 
-        public async System.Threading.Tasks.Task<List<BdoItemModel>> GetMaterialItemsAsync()
+        public async Task<List<BdoItemModel>> GetMaterialItemsAsync()
         {
             var materialLinks = GetItemLinks(MaterialItemsUrl, MaterialTableHtml, MaterialLinkElementId);
-            return await ScrapeItemLinksAsync(materialLinks);    
+            return await ScrapeItemLinksAsync(materialLinks);
         }
 
-        internal async System.Threading.Tasks.Task<List<BdoItemModel>> GetCrystalItemsAsync()
+        public async Task<List<BdoItemModel>> GetCrystalItemsAsync()
         {
-            var materialLinks = GetItemLinks(GemItemsUrl, GemTableHtml,GemLinkElementId);
+            var materialLinks = GetItemLinks(GemItemsUrl, GemTableHtml, GemLinkElementId);
             return await ScrapeItemLinksAsync(materialLinks);
+        }
+
+        public async Task<List<BdoItemModel>> GetAlchemyStoneItemsAsync()
+        {
+            var alchStones = GetItemLinks(AlchemyStonesUrl, MaterialTableHtml, MaterialLinkElementId);
+            return await ScrapeItemLinksAsync(alchStones);
+        }
+
+        public async Task<List<BdoItemModel>> GetEnhancementItemsAsync()
+        {
+            var enhanceItems = GetItemLinks(EnchancementItemsUrl, MaterialTableHtml, MaterialLinkElementId);
+            return await ScrapeItemLinksAsync(enhanceItems);
+        }
+
+        public async Task<List<BdoItemModel>> GetConsumableItemsAsync()
+        {
+            var consumables = GetItemLinks(ConsumableItemsUrl, ConsumableTableHtml, GemLinkElementId);
+            return await ScrapeItemLinksAsync(consumables);
         }
 
         private List<string> GetItemLinks(string url, string htmlTableName, string linkElementId)
         {
             var links = new List<string>();
 
-            using(var driver = Driver)
+            using (var driver = Driver)
             {
                 driver.Manage().Timeouts().ImplicitWait = new TimeSpan(20000);
                 driver.Navigate().GoToUrl(url);
@@ -164,12 +187,12 @@ namespace Scraper.Scrapers
                 if (itemDescriptionElem != null)
                 {
                     item.Description = itemDescriptionElem.InnerText;//Replace with innerHtml for colored text markups
-                    if(item.Description.Contains("Knowledge:"))
+                    if (item.Description.Contains("Knowledge:"))
                     {
                         var knowledgeNode = itemDescriptionElem.Descendants("a")
-                            .FirstOrDefault(e => e.GetAttributeValue("data-id","").StartsWith("theme--"));
+                            .FirstOrDefault(e => e.GetAttributeValue("data-id", "").StartsWith("theme--"));
 
-                        if(knowledgeNode != null)
+                        if (knowledgeNode != null)
                         {
                             item.Knowledge = knowledgeNode.GetAttributeValue("data-id", "");
                         }
@@ -178,13 +201,32 @@ namespace Scraper.Scrapers
                     if (!item.Description.Contains(sellOrMarket))
                         sellOrMarket = "Market Price: ";
 
-                    var sellBuyPrice = item.Description.Substring(item.Description.IndexOf("Buy price:"));
+                    if (item.Description.Contains("Buy price:"))
+                    {
 
-                    var buyPrice = sellBuyPrice.Substring(0, sellBuyPrice.IndexOf(sellOrMarket));
-                    item.BuyPrice = buyPrice.Replace("Buy price: ","");
+                        string sellBuyPrice = string.Empty;
 
-                    var sellprice = sellBuyPrice.Substring(sellBuyPrice.IndexOf(sellOrMarket));
-                    item.SellPrice = sellprice.Replace(sellOrMarket, "");
+                        if (item.Description.Contains("Repair price"))
+                        {
+                            int buyI = item.Description.IndexOf("Buy price:");
+                            sellBuyPrice = item.Description.Substring(buyI, item.Description.IndexOf("Repair price:") - buyI);
+                        }
+                        else
+                        {
+                            sellBuyPrice = item.Description.Substring(item.Description.IndexOf("Buy price:"));
+                        }
+
+
+                        var buyPrice = sellBuyPrice.Substring(0, sellBuyPrice.IndexOf(sellOrMarket));
+                        item.BuyPrice = buyPrice.Replace("Buy price: ", "");
+
+                        var sellprice = sellBuyPrice.Substring(sellBuyPrice.IndexOf(sellOrMarket));
+                        item.SellPrice = sellprice.Replace(sellOrMarket, "");
+                    } else
+                    {
+                        item.SellPrice = "0";
+                        item.BuyPrice = "0";
+                    }
 
                 }
 

@@ -70,6 +70,24 @@ namespace Scraper
                             items = await itemScraper.GetCrystalItemsAsync();
                             file = "SocketItems.json";
                         }
+                        else if(args[1] == "-AlchStones")
+                        {
+                            itemScraper = new CodexItemScraper(chromeDriverLocation);
+                            items = await itemScraper.GetAlchemyStoneItemsAsync();
+                            file = "AlchemyStoneItems.json";
+                        }
+                        else if(args[1] == "-Enhancement")
+                        {
+                            itemScraper = new CodexItemScraper(chromeDriverLocation);
+                            items = await itemScraper.GetEnhancementItemsAsync();
+                            file = "EnhancementItems.json";
+                        }
+                        else if(args[1] == "-Consumable")
+                        {
+                            itemScraper = new CodexItemScraper(chromeDriverLocation);
+                            items = await itemScraper.GetConsumableItemsAsync();
+                            file = "ConsumableItems.json";
+                        }
                         else
                         {
                             Console.WriteLine("Please enter a valid parameter eg: -material");
