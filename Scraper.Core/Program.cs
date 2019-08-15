@@ -15,10 +15,12 @@ namespace Scraper
             string chromeDriverLocation = Directory.GetCurrentDirectory();
             CodexItemScraper itemScraper = null;
             CodexRecipeScraper recipeScraper = null;
+            CodexItemGroupScraper itemGroupScraper = null;
             string file = string.Empty;
             string json = string.Empty;
             List<BdoRecipeModel> recipes = null;
             List<BdoItemModel> items = null;
+            List<BdoItemGroupModel> itemGroups = null;
 
             if (args.Length > 0 && !string.IsNullOrEmpty(args[0]))
             {
@@ -70,7 +72,7 @@ namespace Scraper
                             items = await itemScraper.GetCrystalItemsAsync();
                             file = "SocketItems.json";
                         }
-                        else if(args[1] == "-AlchStones")
+                        else if(args[1] == "-alchstones")
                         {
                             itemScraper = new CodexItemScraper(chromeDriverLocation);
                             items = await itemScraper.GetAlchemyStoneItemsAsync();
@@ -88,6 +90,24 @@ namespace Scraper
                             items = await itemScraper.GetConsumableItemsAsync();
                             file = "ConsumableItems.json";
                         }
+                        else if(args[1] == "-Mount")
+                        {
+                            itemScraper = new CodexItemScraper(chromeDriverLocation);
+                            items = await itemScraper.GetMountItemsAsync();
+                            file = "MountItems.json";
+                        }
+                        else if (args[1] == "-CookingMats")
+                        {
+                            itemScraper = new CodexItemScraper(chromeDriverLocation);
+                            items = await itemScraper.GetCookingMaterialsAsync();
+                            file = "CookingMaterials.json";
+                        }
+                        else if(args[1] == "-AlchemyMats")
+                        {
+                            itemScraper = new CodexItemScraper(chromeDriverLocation);
+                            items = await itemScraper.GetAlchemyMaterialsAsync();
+                            file = "AlchemyMaterials.json";
+                        }
                         else
                         {
                             Console.WriteLine("Please enter a valid parameter eg: -material");
@@ -103,15 +123,31 @@ namespace Scraper
                         return;
                     }
                 }
+                else if(args[0].ToLower() == "itemgroups")
+                {
+                    if(!(args.Length > 1))
+                    {
+                        itemGroupScraper = new CodexItemGroupScraper();
+                        itemGroups = await itemGroupScraper.GetBdoItemGroupsAsync();
+                        Console.WriteLine("Writing To File");
+                        json = JsonConvert.SerializeObject(itemGroups);
+                        File.WriteAllText("ItemGroups.json", json);
+                    }
+                    else
+                    {
+                        Console.WriteLine("invalid number of arguments. Just needs itemgroups");
+                        return;
+                    }
+                }
                 else
                 {
-                    Console.WriteLine("Give a valid argument. eg: recipe, item");
+                    Console.WriteLine("Give a valid argument. eg: recipe, item, itemgroups");
                     return;
                 }
             }
             else
             {
-                Console.WriteLine("Please enter an argument eg: recipe, item");
+                Console.WriteLine("Please enter an argument eg: recipe, item, itemgroups");
                 return;
             }
 

@@ -22,11 +22,18 @@ namespace Scraper.Scrapers
         public static string AlchemyStonesUrl { get; set; } = "https://bdocodex.com/us/items/stones/";
         public static string EnchancementItemsUrl { get; set; } = "https://bdocodex.com/us/items/powerup/";
         public static string ConsumableItemsUrl { get; set; } = "https://bdocodex.com/us/items/consumables/";
+        public static string MountItemUrl { get; set; } = "https://bdocodex.com/us/items/mounts/";
         public static string MaterialTableHtml { get; set; } = "MainItemTable";
         public static string GemTableHtml { get; set; } = "GemsTable";
         public static string ConsumableTableHtml { get; set; } = "ConsumablesTable";
         public static string MaterialLinkElementId { get; set; } = "dt-title-search";
         public static string GemLinkElementId { get; set; } = "sorting_1";
+
+        public static string CookingRecipesLink { get; set; } = "https://bdocodex.com/us/recipes/culinary/";
+        public static string CookingDivFilterId { get; set; } = "CulinaryRecipesTable_material_filters_content";
+        public static string AlchemyRecipesLink { get; set; } = "https://bdocodex.com/us/recipes/alchemy/";
+        public static string AlchemyDivFilterId { get; set; } = "AlchemyRecipesTable_material_filters_content";
+
         public ChromeDriver Driver { get; set; }
 
         public CodexItemScraper(string chromeDriver)
@@ -64,6 +71,53 @@ namespace Scraper.Scrapers
             return await ScrapeItemLinksAsync(consumables);
         }
 
+        public async Task<List<BdoItemModel>> GetCookingMaterialsAsync()
+        {
+            var cookingMaterialLinks = GetFilterItemLinks(CookingRecipesLink, CookingDivFilterId);
+            return await ScrapeItemLinksAsync(cookingMaterialLinks);
+        }
+
+        public async Task<List<BdoItemModel>> GetAlchemyMaterialsAsync()
+        {
+            var alchemyMaterialLinks = GetFilterItemLinks(AlchemyRecipesLink, AlchemyDivFilterId);
+            return await ScrapeItemLinksAsync(alchemyMaterialLinks);
+        }
+
+        public async Task<List<BdoItemModel>> GetMountItemsAsync()
+        {
+            var mountItemLinks = GetItemLinks(MountItemUrl, MaterialTableHtml, MaterialLinkElementId);
+            return await ScrapeItemLinksAsync(mountItemLinks);
+        }
+
+        private List<string> GetFilterItemLinks(string url, string DivFilterId)
+        {
+            var links = new List<string>();
+
+            using (var driver = Driver)
+            {
+                driver.Manage().Timeouts().ImplicitWait = new TimeSpan(20000);
+                driver.Navigate().GoToUrl(url);
+
+                var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(20));
+                wait.Until(ExpectedConditions.ElementExists(By.Id(DivFilterId)));
+
+                var filterSurroundElem = driver.FindElementById(DivFilterId);
+
+                var itemFilters = filterSurroundElem.FindElements(By.ClassName("material_wrapper"));
+
+                foreach (var itemFilter in itemFilters)
+                {
+                    var imgElem = itemFilter.FindElement(By.TagName("img"));
+                    if (imgElem.GetAttribute("data-id").StartsWith("item"))
+                    {
+                        links.Add($"https://bdocodex.com/us/item/{imgElem.GetAttribute("data-item_id")}");
+                    }
+                }
+                driver.Close();
+            }
+            return links;
+        }
+
         private List<string> GetItemLinks(string url, string htmlTableName, string linkElementId)
         {
             var links = new List<string>();
@@ -94,13 +148,25 @@ namespace Scraper.Scrapers
                     nextLink.Click();
                 }
 
-                driver.Close();
+
+                var titleElements2 = driver.FindElementsByClassName(linkElementId).Where(e => e.TagName == "td");
+
+                foreach (var titleElement in titleElements2)
+                {
+                    var linkElement = titleElement.FindElement(By.TagName("a"));
+                    string itemUrl = linkElement.GetAttribute("href");
+                    Console.WriteLine($"Got {itemUrl}");
+                    links.Add(itemUrl);
+                }
+
+
+                    driver.Close();
             }
 
             return links;
         }
 
-        private async System.Threading.Tasks.Task<List<BdoItemModel>> ScrapeItemLinksAsync(List<string> links)
+        public static async System.Threading.Tasks.Task<List<BdoItemModel>> ScrapeItemLinksAsync(List<string> links)
         {
             var materials = new List<BdoItemModel>();
             var htmlDocument = new HtmlDocument();
